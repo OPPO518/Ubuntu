@@ -1,59 +1,77 @@
 #!/bin/bash
 
-# 确保脚本以 root 身份运行
-if [[ $EUID -ne 0 ]]; then
-   echo "此脚本必须以 root 身份运行" 
-   exit 1
-fi
+# 函数：检查root权限
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "请以root用户权限运行此脚本。"
+        exit 1
+    fi
+}
 
-# 提示输入新用户的用户名
-read -p "请输入新用户的用户名: " NEW_USER
+# 函数：安装UFW
+install_ufw() {
+    echo "更新包列表..."
+    apt-get update
+    echo "安装UFW..."
+    apt-get install -y ufw
+    echo "启用UFW..."
+    ufw enable
+    echo "设置默认策略：拒绝所有传入流量，允许所有传出流量..."
+    ufw default deny incoming
+    ufw default allow outgoing
+}
 
-# 生成 SSH 密钥对（如果密钥不存在）
-KEY_PATH="/home/$NEW_USER/.ssh/id_rsa"
-if [ ! -f "$KEY_PATH" ]; then
-    echo "生成新的 SSH 密钥对..."
-    mkdir -p /home/$NEW_USER/.ssh
-    ssh-keygen -t rsa -b 4096 -f $KEY_PATH -N ""
+# 函数：添加端口
+add_ports() {
+    local ports_to_add=("$@")
+    if [ ${#ports_to_add[@]} -eq 0 ]; then
+        echo "未指定要添加的端口。"
+        return
+    fi
+    echo "正在添加端口..."
+    for port in "${ports_to_add[@]}"; do
+        ufw allow "$port"
+        echo "端口 $port 已添加"
+    done
+    echo "重载UFW规则..."
+    ufw reload
+    echo "UFW状态："
+    ufw status verbose
+}
+
+# 函数：删除端口
+delete_ports() {
+    local ports_to_delete=("$@")
+    if [ ${#ports_to_delete[@]} -eq 0 ]; then
+        echo "未指定要删除的端口。"
+        return
+    fi
+    echo "正在删除端口..."
+    for port in "${ports_to_delete[@]}"; do
+        ufw delete allow "$port"
+        echo "端口 $port 已删除"
+    done
+    echo "重载UFW规则..."
+    ufw reload
+    echo "UFW状态："
+    ufw status verbose
+}
+
+# 主程序
+check_root
+
+# 如果ufw未安装，则安装并配置
+if ! command -v ufw &> /dev/null; then
+    install_ufw
 else
-    echo "SSH 密钥对已经存在，跳过生成步骤..."
+    echo "UFW 已安装，跳过安装步骤。"
 fi
 
-# 添加新用户（如果不存在）
-if id "$NEW_USER" &>/dev/null; then
-    echo "用户 $NEW_USER 已经存在，跳过创建步骤..."
-else
-    echo "添加新用户 $NEW_USER..."
-    useradd -m -s /bin/bash $NEW_USER
-    usermod -aG sudo $NEW_USER
-fi
+# 示例：使用空格分隔多个端口
+ports_to_add=("22 80 443 8080")   # 要添加的端口列表
+ports_to_delete=("8080")          # 要删除的端口列表
 
-# 将公钥添加到新用户的 authorized_keys
-echo "配置 SSH 密钥登录..."
-cat "$KEY_PATH.pub" >> /home/$NEW_USER/.ssh/authorized_keys
-chown $NEW_USER:$NEW_USER /home/$NEW_USER/.ssh/authorized_keys
-chmod 600 /home/$NEW_USER/.ssh/authorized_keys
+add_ports ${ports_to_add[@]}
+delete_ports ${ports_to_delete[@]}
 
-# 禁用密码登录
-echo "禁用密码登录..."
-SSHD_CONFIG="/etc/ssh/sshd_config"
-if grep -q "^PasswordAuthentication" $SSHD_CONFIG; then
-    sed -i "s/^PasswordAuthentication.*/PasswordAuthentication no/" $SSHD_CONFIG
-else
-    echo "PasswordAuthentication no" >> $SSHD_CONFIG
-fi
-
-if grep -q "^ChallengeResponseAuthentication" $SSHD_CONFIG; then
-    sed -i "s/^ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/" $SSHD_CONFIG
-else
-    echo "ChallengeResponseAuthentication no" >> $SSHD_CONFIG
-fi
-
-# 重启 SSH 服务以应用更改
-echo "重启 SSH 服务..."
-systemctl restart ssh
-
-# 提示完成设置并显示密钥路径
-echo "设置完成。请使用新用户 $NEW_USER 的私钥连接服务器，并使用 'sudo -i' 获得 root 权限。"
-echo "私钥路径: $KEY_PATH"
-echo "公钥路径: $KEY_PATH.pub"
+echo "UFW配置已更新。"
