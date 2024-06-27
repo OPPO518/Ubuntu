@@ -6,8 +6,8 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# 新用户的用户名
-NEW_USER="newuser"
+# 提示输入新用户的用户名
+read -p "请输入新用户的用户名: " NEW_USER
 
 # 生成 SSH 密钥对（如果密钥不存在）
 KEY_PATH="/home/$NEW_USER/.ssh/id_rsa"
@@ -15,7 +15,6 @@ if [ ! -f "$KEY_PATH" ]; then
     echo "生成新的 SSH 密钥对..."
     mkdir -p /home/$NEW_USER/.ssh
     ssh-keygen -t rsa -b 4096 -f $KEY_PATH -N ""
-    chown -R $NEW_USER:$NEW_USER /home/$NEW_USER/.ssh
 else
     echo "SSH 密钥对已经存在，跳过生成步骤..."
 fi
@@ -54,4 +53,7 @@ fi
 echo "重启 SSH 服务..."
 systemctl restart ssh
 
+# 提示完成设置并显示密钥路径
 echo "设置完成。请使用新用户 $NEW_USER 的私钥连接服务器，并使用 'sudo -i' 获得 root 权限。"
+echo "私钥路径: $KEY_PATH"
+echo "公钥路径: $KEY_PATH.pub"
