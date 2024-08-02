@@ -37,13 +37,13 @@ confirm() {
 # 申请 SSL 证书
 ssl_cert_issue() {
     echo -E ""
-    LOGD "******使用说明******"
-    LOGI "该脚本将使用Acme脚本申请证书,使用时需保证:"
+    LOGD "****** 使用说明 ******"
+    LOGI "该脚本将使用 Acme 脚本申请证书，使用时需保证:"
     LOGI "1. 知晓 Cloudflare 注册邮箱"
     LOGI "2. 知晓 Cloudflare Global API Key"
     LOGI "3. 域名已通过 Cloudflare 进行解析到当前服务器"
-    LOGI "4. 该脚本申请证书默认安装路径为 /root/cert 目录"
-    confirm "我已确认以上内容[y/n]" "y"
+    LOGI "4. 证书将安装在 /root/cert 目录"
+    confirm "我已确认以上内容 [y/n]" "y"
     if [ $? -eq 0 ]; then
         cd ~
         LOGI "安装 Acme 脚本"
@@ -56,21 +56,16 @@ ssl_cert_issue() {
         CF_GlobalKey=""
         CF_AccountEmail=""
         certPath=/root/cert
-        if [ ! -d "$certPath" ]; then
-            mkdir $certPath
-        else
-            rm -rf $certPath
-            mkdir $certPath
-        fi
+        mkdir -p $certPath
         LOGD "请设置域名:"
-        read -p "输入你的域名:" CF_Domain
-        LOGD "你的域名设置为:${CF_Domain}"
+        read -p "输入你的域名: " CF_Domain
+        LOGD "你的域名设置为: ${CF_Domain}"
         LOGD "请设置 API 密钥:"
-        read -p "输入你的密钥:" CF_GlobalKey
-        LOGD "你的 API 密钥为:${CF_GlobalKey}"
+        read -p "输入你的密钥: " CF_GlobalKey
+        LOGD "你的 API 密钥为: ${CF_GlobalKey}"
         LOGD "请设置注册邮箱:"
-        read -p "输入你的邮箱:" CF_AccountEmail
-        LOGD "你的注册邮箱为:${CF_AccountEmail}"
+        read -p "输入你的邮箱: " CF_AccountEmail
+        LOGD "你的注册邮箱为: ${CF_AccountEmail}"
         ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
         if [ $? -ne 0 ]; then
             LOGE "修改默认 CA 为 Lets' Encrypt 失败, 脚本退出"
@@ -112,7 +107,7 @@ ssl_cert_issue() {
 
 # 显示使用方法
 show_usage() {
-    echo "SSL 证书申请脚本使用方法: "
+    echo "SSL 证书申请脚本使用方法:"
     echo "------------------------------------------"
     echo "申请 SSL 证书"
     echo "------------------------------------------"
@@ -121,7 +116,7 @@ show_usage() {
 # 主程序入口
 if [[ $# -gt 0 ]]; then
     case $1 in
-    "x-ui-ssl-cert-issue")
+    "申请 SSL 证书")
         ssl_cert_issue
         ;;
     *)
