@@ -124,5 +124,5 @@ if [[ $# -gt 0 ]]; then
         ;;
     esac
 else
-    show_usage
+    ssl_cert_issue
 fi
